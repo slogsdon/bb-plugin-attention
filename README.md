@@ -3,6 +3,12 @@
 A "Needs attention" section for the bb homepage / new-thread screen: the top
 10 threads that want you, ranked most urgent first.
 
+## Screenshots
+
+![attention](docs/screenshot.png)
+
+*The "Needs attention" home screen section.*
+
 ## What counts as "needs attention"
 
 Ranked `error` → `interaction` → `unread`, then by most recent attention:
