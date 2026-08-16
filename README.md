@@ -31,6 +31,18 @@ homepage sections in plugin-id order).
 - **CLI** — `bb attention list [--project <projectId>]` prints the same
   ranked list.
 
+## Install
+
+```sh
+bb plugin install https://github.com/slogsdon/bb-plugin-attention
+# or, from a checkout:
+bb plugin install path:path/to/bb-plugin-attention
+```
+
+Once installed, the homepage section appears automatically on the
+homepage / new-thread screen; `bb attention list [--project <projectId>]`
+is available as a CLI. No configuration is required.
+
 ## Development
 
 ```sh

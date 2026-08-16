@@ -59,5 +59,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "bb plugin build ."
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
