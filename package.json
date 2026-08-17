@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-attention",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Top threads needing you on the bb homepage: errors, pending input, unread finished turns.",
   "keywords": [
     "bb",
