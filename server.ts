@@ -100,7 +100,7 @@ async function buildSnapshot(
     if (thread.status === "error" || thread.runtime.displayStatus === "error") {
       kind = "error";
       label = "Failed";
-    } else if (thread.hasPendingInteraction) {
+    } else if (thread.hasPendingInteraction || thread.status === "active") {
       try {
         const pending = (await bb.sdk.threads.interactions.list({
           threadId: thread.id,
@@ -173,6 +173,36 @@ export default async function plugin(bb: BbPluginApi) {
   };
   bb.events.on("thread.idle", changed);
   bb.events.on("thread.failed", changed);
+
+  bb.background.service("attention-watch", {
+    async start(signal) {
+      const unsubscribe = bb.sdk.subscribe({
+        event: "thread:changed",
+        callback: (event) => {
+          if (
+            event.id &&
+            event.changes.includes("interactions-changed")
+          ) {
+            bb.realtime.publish("attention-changed", {
+              threadId: event.id,
+            });
+          }
+        },
+      });
+
+      await new Promise<void>((resolve) => {
+        const stop = () => {
+          unsubscribe();
+          resolve();
+        };
+        if (signal.aborted) {
+          stop();
+          return;
+        }
+        signal.addEventListener("abort", stop, { once: true });
+      });
+    },
+  });
 
   bb.cli.register({
     name: "attention",

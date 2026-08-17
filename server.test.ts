@@ -119,9 +119,8 @@ describe("attention snapshot", () => {
         threads: {
           list: async () => [failed, waiting, unread, hidden, archived, active],
           interactions: {
-            list: async ({ threadId }: { threadId: string }) => [
-              pendingInteraction(threadId),
-            ],
+            list: async ({ threadId }: { threadId: string }) =>
+              threadId === "t_wait" ? [pendingInteraction(threadId)] : [],
           },
         },
       },
@@ -157,8 +156,8 @@ describe("attention snapshot", () => {
       label: "Turn finished — reply needed",
     });
 
-    // Interactions are only looked up for threads flagged with one.
-    expect(harness.inspection.sdk.callsTo("threads.interactions.list")).toHaveLength(1);
+    // Active threads are also checked because their summary flag may lag.
+    expect(harness.inspection.sdk.callsTo("threads.interactions.list")).toHaveLength(2);
   });
 
   it("caps the list at ten and sorts by attention recency within a kind", async () => {
@@ -193,6 +192,42 @@ describe("attention snapshot", () => {
     expect(items[9].threadId).toBe("t_2");
   });
 
+  it("surfaces an active AskUserQuestion when the thread flag is stale", async () => {
+    const waiting = listThread({
+      id: "t_active_question",
+      title: "Active question",
+      titleFallback: null,
+      status: "active",
+      runtime: { displayStatus: "active", hostReconnectGraceExpiresAt: null },
+      hasPendingInteraction: false,
+      latestAttentionAt: 4_000,
+    });
+    const { bb, harness } = createFakePluginHost({
+      pluginId: "attention",
+      sdk: {
+        threads: {
+          list: async () => [waiting],
+          interactions: {
+            list: async () => [pendingInteraction(waiting.id)],
+          },
+        },
+      },
+    });
+    await plugin(bb);
+
+    const result = (await harness.behavior.callRpc("attention", {
+      projectId: null,
+    })) as { items: Array<{ threadId: string; kind: string; detail?: string }> };
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        threadId: waiting.id,
+        kind: "interaction",
+        detail: "Ship it now or wait for review?",
+      }),
+    ]);
+  });
+
   it("exposes the same ranked list through the CLI", async () => {
     const failed = listThread({
       id: "t_error",
@@ -216,5 +251,39 @@ describe("attention snapshot", () => {
     expect(run.exitCode).toBe(0);
     expect(run.stdout).toContain("Broken thread");
     expect(run.stdout).toContain("ERROR");
+  });
+
+  it("publishes attention refreshes for interaction lifecycle changes", async () => {
+    let onThreadChange:
+      | ((event: { id?: string; changes: readonly string[] }) => void)
+      | undefined;
+    let unsubscribeCalls = 0;
+    const { bb, harness } = createFakePluginHost({
+      pluginId: "attention",
+      sdk: {
+        subscribe: ({ callback }: { callback: typeof onThreadChange }) => {
+          onThreadChange = callback;
+          return () => {
+            unsubscribeCalls += 1;
+          };
+        },
+      },
+    });
+    await plugin(bb);
+
+    const service = harness.behavior.runService("attention-watch");
+    onThreadChange?.({ id: "t_question", changes: ["status-changed"] });
+    onThreadChange?.({ id: "t_question", changes: ["interactions-changed"] });
+
+    expect(harness.inspection.realtimeSignals).toEqual([
+      {
+        channel: "attention-changed",
+        payload: { threadId: "t_question" },
+      },
+    ]);
+
+    service.controller.abort();
+    await service.done;
+    expect(unsubscribeCalls).toBe(1);
   });
 });
