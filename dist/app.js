@@ -133,14 +133,12 @@ function AttentionHome({ projectId }) {
   const [items, setItems] = useState(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
   const refresh = useCallback(() => {
-    setBusy(true);
     setError(null);
     void rpc.call("attention", { projectId }).then((value) => {
       setItems(value.items);
       setTotal(value.total);
-    }).catch(() => setError("Could not load attention threads")).finally(() => setBusy(false));
+    }).catch(() => setError("Could not load attention threads"));
   }, [rpc, projectId]);
   useEffect(refresh, [refresh]);
   useRealtime("attention-changed", refresh);
@@ -154,13 +152,6 @@ function AttentionHome({ projectId }) {
     return shownTotal > items.length ? `Showing top ${items.length} of ${shownTotal} threads` : null;
   }, [items, shownTotal]);
   return /* @__PURE__ */ jsxs("div", { className: "attention-wrap", children: [
-    /* @__PURE__ */ jsxs("div", { className: "attention-toolbar", children: [
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsx("h1", { children: "Needs attention" }),
-        /* @__PURE__ */ jsx("p", { children: items === null ? "Scanning threads\u2026" : items.length === 0 ? "Everything is quiet." : "Threads waiting on you." })
-      ] }),
-      /* @__PURE__ */ jsx("button", { type: "button", onClick: refresh, disabled: busy, children: busy ? "Refreshing\u2026" : "Refresh" })
-    ] }),
     error ? /* @__PURE__ */ jsx("p", { className: "attention-error", children: error }) : null,
     items === null ? null : items.length === 0 ? /* @__PURE__ */ jsx("p", { className: "attention-empty", children: "Nothing needs your attention right now." }) : /* @__PURE__ */ jsx("div", { className: "attention-list", children: items.map((item) => /* @__PURE__ */ jsx(AttentionRow, { item, onOpen: open }, item.threadId)) }),
     footer ? /* @__PURE__ */ jsx("p", { className: "attention-footer", children: footer }) : null

@@ -82,10 +82,8 @@ function AttentionHome({ projectId }: { projectId: string | null }) {
   const [items, setItems] = useState<AttentionItem[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
-    setBusy(true);
     setError(null);
     void rpc
       .call("attention", { projectId })
@@ -93,8 +91,7 @@ function AttentionHome({ projectId }: { projectId: string | null }) {
         setItems(value.items as AttentionItem[]);
         setTotal(value.total);
       })
-      .catch(() => setError("Could not load attention threads"))
-      .finally(() => setBusy(false));
+      .catch(() => setError("Could not load attention threads"));
   }, [rpc, projectId]);
 
   useEffect(refresh, [refresh]);
@@ -113,23 +110,11 @@ function AttentionHome({ projectId }: { projectId: string | null }) {
       : null;
   }, [items, shownTotal]);
 
+  // The host renders the section heading ("Needs attention"); this component
+  // only renders the list. Updates arrive via the realtime signal, so there is
+  // no manual refresh toolbar cluttering the section.
   return (
     <div className="attention-wrap">
-      <div className="attention-toolbar">
-        <div>
-          <h1>Needs attention</h1>
-          <p>
-            {items === null
-              ? "Scanning threads…"
-              : items.length === 0
-                ? "Everything is quiet."
-                : "Threads waiting on you."}
-          </p>
-        </div>
-        <button type="button" onClick={refresh} disabled={busy}>
-          {busy ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
       {error ? <p className="attention-error">{error}</p> : null}
       {items === null ? null : items.length === 0 ? (
         <p className="attention-empty">Nothing needs your attention right now.</p>
